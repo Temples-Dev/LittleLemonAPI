@@ -1,0 +1,27 @@
+ def post(self, request, userId=None):
+        """Add a new member to the Manager or Delivery Crew group"""
+        try:
+            url_name = request.resolver_match.url_name
+            if request.user.groups.filter(name="Manager").exists():
+            #  group = Group.objects.get(name="Manager")
+                if url_name == "managers":
+                    serializer_data = request.data.copy()
+                    serializer_data['groups'] = 1
+                    serializer = UserSerializer(data=serializer_data)
+                    if serializer.is_valid(raise_exception=True):
+                        serializer.save()
+                        return Response(serializer.data, status=status.HTTP_201_CREATED)
+                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                elif url_name == "delivery-crews":
+                     serializer_data = request.data.copy()
+                     serializer_data['groups'] = 2
+                     serializer = UserSerializer(data=request.data)
+                     if serializer.is_valid(raise_exception=True):
+                        serializer.save()
+                        return Response(serializer.data, status=status.HTTP_201_CREATED)
+                     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                
+            else:
+                return Response({"error":"You are not authorised"}, status=status.HTTP_403_FORBIDDEN)
+        except :
+            return Response({"error":"You already exist"}, status=status.HTTP_403_FORBIDDEN)

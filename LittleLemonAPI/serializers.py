@@ -21,10 +21,15 @@ class MenuItemSerializer(serializers.ModelSerializer):
 
 
 class CartSerializer(serializers.ModelSerializer):
+    price = serializers.SerializerMethodField(read_only = True)
+
     class Meta:
         model = Cart
         fields = "__all__"
-        depth = 1
+        
+
+    def get_price(self, cart: Cart):
+        return cart.quantity * cart.unitprice
 
 
 class OrderSerializer(serializers.ModelSerializer):
@@ -56,7 +61,7 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id', 'username', 'password', "first_name",
                   "last_name", "email", "groups"]
-      
+
         extra_kwargs = {  # extra_kwargs
             'id': {
                 "read_only": True
@@ -71,4 +76,3 @@ class UserSerializer(serializers.ModelSerializer):
         # Hash the password before saving
         validated_data['password'] = make_password(validated_data['password'])
         return super().create(validated_data)
-        

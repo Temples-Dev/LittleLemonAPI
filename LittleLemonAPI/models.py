@@ -22,7 +22,7 @@ class MenuItem(models.Model):
 class Cart(models.Model):
     user = models.ForeignKey(User, on_delete = models.CASCADE)
     menuitem = models.ForeignKey(MenuItem, on_delete = models.CASCADE)
-    quantity = models.SmallIntegerField(),
+    quantity = models.SmallIntegerField()
     unitprice= models.DecimalField(max_digits=6,decimal_places=2)
     price = models.DecimalField(max_digits=6,decimal_places=2)
     
@@ -31,6 +31,11 @@ class Cart(models.Model):
     
     class Meta:
         unique_together = ("menuitem", "user")
+    
+     # Calculate the price before saving
+    def save(self, *args, **kwargs):
+        self.price = self.quantity * self.unitprice 
+        super(Cart, self).save(*args, **kwargs)
         
 
 class Order(models.Model):

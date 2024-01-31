@@ -5,7 +5,7 @@ from rest_framework.decorators import api_view, authentication_classes, permissi
 from rest_framework.views import APIView
 # from rest_framework.permissions import IsAdminUser
 from .models import Category, Order, OrderItem, MenuItem, Cart,  User
-from .serializers import MenuItemSerializer, UserSerializer
+from .serializers import MenuItemSerializer, UserSerializer, CartSerializer
 # from rest_framework import generics
 # from rest_framework.permissions import IsAuthenticated
 # from rest_framework.authentication import SessionAuthentication
@@ -144,8 +144,8 @@ class UserGroupManager(APIView):
                
                     request_data = request.data.copy()
                     request_data['groups'] = [group.id]
-                    print(request_data)
-                    serializer = UserSerializer(data=request_data, partial=False)
+                    # print(request_data)
+                    serializer = UserSerializer(data=request_data)
                     if serializer.is_valid(raise_exception=True):
                         serializer.save()
                         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -181,8 +181,15 @@ class UserGroupManager(APIView):
             return Response({"error": "Group does not exist"}, status=status.HTTP_404_NOT_FOUND)
 
 
-class Cart(APIView):
-    pass
+class CartItems(APIView):
+    def get(self, request):
+        try:
+                cart_items = Cart.objects.all()
+                serialized_items = CartSerializer(cart_items, many=True)
+                return Response(serialized_items.data, status=status.HTTP_200_OK)
+        except :
+            return Response({"message": "There is no item in cart"}, status=status.HTTP_204_NO_CONTENT)
+        
 
 
 class Order(APIView):

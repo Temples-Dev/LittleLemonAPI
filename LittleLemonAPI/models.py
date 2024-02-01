@@ -34,6 +34,7 @@ class Cart(models.Model):
     
      # Calculate the price before saving
     def save(self, *args, **kwargs):
+        self.unitprice = self.menuitem.price
         self.price = self.quantity * self.unitprice 
         super(Cart, self).save(*args, **kwargs)
         

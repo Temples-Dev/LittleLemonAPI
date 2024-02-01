@@ -21,14 +21,16 @@ class MenuItemSerializer(serializers.ModelSerializer):
 
 
 class CartSerializer(serializers.ModelSerializer):
-    price = serializers.SerializerMethodField(read_only = True)
-
+  
+    price = serializers.SerializerMethodField(method_name="get_price",read_only = True)
+    unitprice = serializers.DecimalField(max_digits=6,decimal_places=2,read_only = True )
+    
     class Meta:
         model = Cart
         fields = "__all__"
-        
-
+     
     def get_price(self, cart: Cart):
+        self.unitprice = cart.menuitem.price
         return cart.quantity * cart.unitprice
 
 

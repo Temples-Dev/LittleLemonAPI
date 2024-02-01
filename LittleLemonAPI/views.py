@@ -36,7 +36,7 @@ class MenuItems(APIView):
             if serializer.is_valid(raise_exception=True):
                 serializer.save()
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
-            # return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         else:
             # only managers allowed to create menu items
             return Response({"message": "You are not authorised to perform this action"}, status=status.HTTP_403_FORBIDDEN)
@@ -184,11 +184,37 @@ class UserGroupManager(APIView):
 class CartItems(APIView):
     def get(self, request):
         try:
-                cart_items = Cart.objects.all()
+                cart_items = Cart.objects.filter(user=request.user)
                 serialized_items = CartSerializer(cart_items, many=True)
                 return Response(serialized_items.data, status=status.HTTP_200_OK)
-        except :
+        except Cart.DoesNotExist:
             return Response({"message": "There is no item in cart"}, status=status.HTTP_204_NO_CONTENT)
+        
+    def post(self, request):
+        try:
+           
+            menuitem_id = request.data.get('menuitem')
+           
+            quantity = request.data.get('quantity')
+            
+
+            # Create a new cart item
+            cart_item_data = {
+                'user': request.user.id,
+                'menuitem': menuitem_id,
+                'quantity': quantity,
+                # price and unit price is set dynamically
+               
+            }
+            serializer = CartSerializer(data=cart_item_data)
+           
+            if serializer.is_valid(raise_exception=True):
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except  Cart.DoesNotExist:
+            return Response({"message": "There is nothing to add in cart"}, status=status.HTTP_404_NOT_FOUND)
+            
         
 
 

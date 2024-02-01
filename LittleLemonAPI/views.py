@@ -92,7 +92,7 @@ class MenuItems(APIView):
 class UserGroupManager(APIView):
 
     def get(self, request, userId=None):
-        
+
         try:
             url_name = request.resolver_match.url_name
             # print("URL name:", url_name) #used for testing
@@ -126,34 +126,33 @@ class UserGroupManager(APIView):
             return Response({"error": "Manager group does not exist"}, status=status.HTTP_404_NOT_FOUND)
         except User.DoesNotExist:
             return Response({"error": "User does not exist"}, status=status.HTTP_404_NOT_FOUND)
-        
-    def post(self, request, userId=None):
-            """Add a new member to the Manager or Delivery Crew group"""
-            try:
-                url_name = request.resolver_match.url_name
-                if request.user.groups.filter(name="Manager").exists():
-                    if url_name == "managers":
-                        group_name = "Manager"
-                    elif url_name == "delivery-crews":
-                        group_name = "Delivery crew"
-                    else:
-                        return Response({"error": "Invalid URL"}, status=status.HTTP_400_BAD_REQUEST)
 
-                    group = Group.objects.get(name=group_name)
-                
-               
-                    request_data = request.data.copy()
-                    request_data['groups'] = [group.id]
-                    # print(request_data)
-                    serializer = UserSerializer(data=request_data)
-                    if serializer.is_valid(raise_exception=True):
-                        serializer.save()
-                        return Response(serializer.data, status=status.HTTP_201_CREATED)
-                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def post(self, request, userId=None):
+        """Add a new member to the Manager or Delivery Crew group"""
+        try:
+            url_name = request.resolver_match.url_name
+            if request.user.groups.filter(name="Manager").exists():
+                if url_name == "managers":
+                    group_name = "Manager"
+                elif url_name == "delivery-crews":
+                    group_name = "Delivery crew"
                 else:
-                    return Response({"error": "You are not authorized"}, status=status.HTTP_403_FORBIDDEN)
-            except Group.DoesNotExist:
-                return Response({"error": "Group does not exist"}, status=status.HTTP_404_NOT_FOUND)
+                    return Response({"error": "Invalid URL"}, status=status.HTTP_400_BAD_REQUEST)
+
+                group = Group.objects.get(name=group_name)
+
+                request_data = request.data.copy()
+                request_data['groups'] = [group.id]
+                # print(request_data)
+                serializer = UserSerializer(data=request_data)
+                if serializer.is_valid(raise_exception=True):
+                    serializer.save()
+                    return Response(serializer.data, status=status.HTTP_201_CREATED)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({"error": "You are not authorized"}, status=status.HTTP_403_FORBIDDEN)
+        except Group.DoesNotExist:
+            return Response({"error": "Group does not exist"}, status=status.HTTP_404_NOT_FOUND)
 
     def delete(self, request, userId=None):
         try:
@@ -184,19 +183,16 @@ class UserGroupManager(APIView):
 class CartItems(APIView):
     def get(self, request):
         try:
-                cart_items = Cart.objects.filter(user=request.user)
-                serialized_items = CartSerializer(cart_items, many=True)
-                return Response(serialized_items.data, status=status.HTTP_200_OK)
+            cart_items = Cart.objects.filter(user=request.user)
+            serialized_items = CartSerializer(cart_items, many=True)
+            return Response(serialized_items.data, status=status.HTTP_200_OK)
         except Cart.DoesNotExist:
             return Response({"message": "There is no item in cart"}, status=status.HTTP_204_NO_CONTENT)
-        
+
     def post(self, request):
         try:
-           
             menuitem_id = request.data.get('menuitem')
-           
             quantity = request.data.get('quantity')
-            
 
             # Create a new cart item
             cart_item_data = {
@@ -204,18 +200,25 @@ class CartItems(APIView):
                 'menuitem': menuitem_id,
                 'quantity': quantity,
                 # price and unit price is set dynamically
-               
             }
             serializer = CartSerializer(data=cart_item_data)
-           
+
             if serializer.is_valid(raise_exception=True):
                 serializer.save()
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        except  Cart.DoesNotExist:
+        except Cart.DoesNotExist:
             return Response({"message": "There is nothing to add in cart"}, status=status.HTTP_404_NOT_FOUND)
-            
         
+    def delete(self, request):
+        try:
+            cart_items = Cart.objects.filter(user=request.user)
+            if cart_items.exists():
+                cart_items.delete()
+                return Response({"message": "Cart items deleted"}, status=status.HTTP_200_OK)
+            return Response({"message": "Cart item is empty"}, status=status.HTTP_404_NOT_FOUND)
+        except MenuItem.DoesNotExist:
+            return Response({"error": "Cart item does not exist"}, status=status.HTTP_404_NOT_FOUND)
 
 
 class Order(APIView):
@@ -223,7 +226,7 @@ class Order(APIView):
 
 
 @api_view(["GET"])
-# @authentication_classes([SessionAuthentication]) // enabling it allows browsable api to remove token based auth meant for dev testing
+# @authentication_classes([SessionAuthentication]) // enabling it allows browsable api to remove token based auth meant for dev testing (temporary)
 # @permission_classes([IsAuthenticated]) // SessionAuthentication must be enable in settings
 def endpoints(request):
     return Response(

@@ -1,9 +1,9 @@
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
-from .models import MenuItem, Cart, Category, Order, OrderItem, User
+from .models import MenuItem, Cart, Category, Order , OrderItem, User
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.hashers import make_password
-
+from decimal import Decimal
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -17,7 +17,7 @@ class MenuItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = MenuItem
         fields = "__all__"
-        # depth = 1
+        depth = 1
 
 
 class CartSerializer(serializers.ModelSerializer):
@@ -34,16 +34,36 @@ class CartSerializer(serializers.ModelSerializer):
         return cart.quantity * cart.unitprice
 
 
+
+
 class OrderSerializer(serializers.ModelSerializer):
+    
+    order_items = serializers.SerializerMethodField()
+    total = serializers.SerializerMethodField()
+    
     class Meta:
         model = Order
         fields = "__all__"
-
+        # depth = 1
+        
+    def get_order_items(self, obj):
+        items = OrderItemSerializer(OrderItem.objects.filter(order=obj), many=True).data
+        print(items)
+        return  {i['id'] : i for i in items}
+    
+    def get_total(self, obj):
+        items = OrderItemSerializer(OrderItem.objects.filter(order=obj), many=True).data
+        return sum([Decimal(i["price"]) for i in items])
+        
+    
 
 class OrderItemSerializer(serializers.ModelSerializer):
+   
     class Meta:
         model = OrderItem
         fields = "__all__"
+
+
 
 
 class UserSerializer(serializers.ModelSerializer):

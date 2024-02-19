@@ -1,27 +1,89 @@
- def post(self, request, userId=None):
-        """Add a new member to the Manager or Delivery Crew group"""
-        try:
-            url_name = request.resolver_match.url_name
-            if request.user.groups.filter(name="Manager").exists():
-            #  group = Group.objects.get(name="Manager")
-                if url_name == "managers":
-                    serializer_data = request.data.copy()
-                    serializer_data['groups'] = 1
-                    serializer = UserSerializer(data=serializer_data)
-                    if serializer.is_valid(raise_exception=True):
-                        serializer.save()
-                        return Response(serializer.data, status=status.HTTP_201_CREATED)
-                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-                elif url_name == "delivery-crews":
-                     serializer_data = request.data.copy()
-                     serializer_data['groups'] = 2
-                     serializer = UserSerializer(data=request.data)
-                     if serializer.is_valid(raise_exception=True):
-                        serializer.save()
-                        return Response(serializer.data, status=status.HTTP_201_CREATED)
-                     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-                
-            else:
-                return Response({"error":"You are not authorised"}, status=status.HTTP_403_FORBIDDEN)
-        except :
-            return Response({"error":"You already exist"}, status=status.HTTP_403_FORBIDDEN)
+models.py
+class Order(models.Model):
+    user = models.ForeignKey(User, on_delete = models.CASCADE)
+    delivery_crew = models.ForeignKey(User, on_delete = models.SET_NULL, related_name="delivery_crew", null= True)
+    status = models.BooleanField(db_index = True, default = 0)
+    total = models.DecimalField(max_digits=6,decimal_places=2)
+    date = models.DateField(db_index = True)
+    
+    def __str__(self) -> str:
+        return f'Order : {self.user.username}'
+        
+    
+
+class OrderItem(models.Model):
+    order = models.ForeignKey(User, on_delete = models.CASCADE)
+    menuitem = models.ForeignKey(MenuItem, on_delete = models.CASCADE)
+    quantity = models.SmallIntegerField()
+    unitprice= models.DecimalField(max_digits=6,decimal_places=2)
+    price = models.DecimalField(max_digits=6,decimal_places=2)
+    
+    def __str__(self) -> str:
+         return f'Order Item: {self.order.username}'
+    
+    class Meta:
+        unique_together = ("order", "menuitem")
+        
+views.py
+class Order(APIView):
+
+def get(self, request, orderId=None):
+    
+    order_items = OrderModel.objects.filter(user=request.user)
+    serialized_orders = OrderSerializer(order_items, many=True)
+    return Response(serialized_orders.data, status=status.HTTP_200_OK)
+
+serilizer.py
+class OrderSerializer(serializers.ModelSerializer):
+    date = serializers.DateTimeField(write_only=True, default=datetime.now)
+    order_items = serializers.SerializerMethodField()
+    total = serializers.DecimalField(max_digits=6,decimal_places=2, read_only=True)
+    
+    class Meta:
+        model = Order
+        fields = "__all__"
+        # depth = 1
+        
+        
+    #  getting the order items
+    def get_order_items(self, instance:User):
+        
+        order_items = OrderItem.objects.filter(order=instance.pk)
+        serializer = OrderItemSerializer(order_items, many=True)
+        print(serializer.data)
+        return serializer.data
+    
+    
+    
+    # calculating the total price of order items
+    # def get_total(self, instance):
+    #     order_items = OrderItem.objects.filter(order=instance)
+    #     total = Decimal(0)
+        
+    #     for item in order_items:
+    #         total += item.price * item.quantity
+    #     return total
+    def get_total(self, instance:User):
+        order_items = OrderItem.objects.filter(order=instance.pk)
+        total = sum(item.price * item.quantity for item in order_items)
+        return total
+    
+    # getting the date field back in serialization
+    def to_representation(self, instance):
+        data= super().to_representation(instance)
+        data['date'] = instance.date.strftime('%Y-%m-%d')
+        return data
+    
+    
+    
+    
+
+
+class OrderItemSerializer(serializers.ModelSerializer):
+    # price = serializers.DecimalField(max_digits=6, decimal_places=2, read_only=True,source="menuitem.price")
+    # unitprice = serializers.DecimalField(max_digits=6,decimal_places=2,read_only = True, source="menuitem.unitprice")
+    # quantity = serializers.IntegerField(read_only=True, source="menuitem.quantity")
+    class Meta:
+        model = OrderItem
+        fields = "__all__"
+        

@@ -2,6 +2,10 @@ from django.db import models
 from django.contrib.auth.models import User
 # Create your models here.
 
+# from django.db import models
+from django.db.models.signals import post_save, post_delete
+from django.dispatch import receiver
+
 class Category(models.Model):
     slug = models.SlugField()
     title = models.CharField(max_length = 255, db_index = True)
@@ -26,6 +30,8 @@ class Cart(models.Model):
     unitprice= models.DecimalField(max_digits=6,decimal_places=2)
     price = models.DecimalField(max_digits=6,decimal_places=2)
     
+
+    
     def __str__(self) -> str:
         return f'Cart : {self.user.username}'
     
@@ -47,21 +53,42 @@ class Order(models.Model):
     date = models.DateField(db_index = True)
     
     def __str__(self) -> str:
-        return f'Order : {self.user.username}'
+        return f'Order ID: {self.pk} User : {self.user.username}'
+    
+    def update_total(self):
+        # Calculate total based on associated order items
+        print("yoyo update total")
+        total = sum(item.price for item in self.order_items.all())
+        self.total = total
+        self.save()
+
+
+        
     
 
 class OrderItem(models.Model):
-    order = models.ForeignKey(User, on_delete = models.CASCADE)
+    order = models.ForeignKey(Order, related_name='order_items',on_delete = models.CASCADE)
     menuitem = models.ForeignKey(MenuItem, on_delete = models.CASCADE)
-    quantity = models.SmallIntegerField(),
+    quantity = models.SmallIntegerField()
     unitprice= models.DecimalField(max_digits=6,decimal_places=2)
     price = models.DecimalField(max_digits=6,decimal_places=2)
     
     def __str__(self) -> str:
-         return f'Order Item: {self.order.username}'
+         return f'Order Id: {self.order.pk},  User: {self.order.user},  Order Item: {self.menuitem.title} '
     
     class Meta:
         unique_together = ("order", "menuitem")
         
+    def save(self, *args, **kwargs):
+        # Calculate the price based on the quantity and unit price
+        self.price = self.quantity * self.unitprice
+        super().save(*args, **kwargs)
+        
+    
+@receiver(post_save, sender=OrderItem)
+@receiver(post_delete, sender=OrderItem)
+def update_order_total(sender, instance:Order, **kwargs):
+    # Update total of the associated order whenever an OrderItem is saved or deleted
+    instance.order.update_total()
 
         

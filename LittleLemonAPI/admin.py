@@ -11,6 +11,12 @@ class CartAdmin(admin.ModelAdmin):
 
 admin.site.register(Cart, CartAdmin)
 
+class OrderAdmin(admin.ModelAdmin):
+    readonly_fields = ('total')
 
 admin.site.register(Order)
-admin.site.register(OrderItem)
+
+class OrderItemAdmin(admin.ModelAdmin):
+    readonly_fields = ('price','unitprice') #quantity
+
+admin.site.register(OrderItem, OrderItemAdmin)

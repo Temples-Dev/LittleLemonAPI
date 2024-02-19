@@ -1,0 +1,11 @@
+Admin
+    - username: admin
+    - password: admin
+
+Customer
+    - test1
+    - qwedc123
+
+Delivery
+    - delivery
+    - 1234deli

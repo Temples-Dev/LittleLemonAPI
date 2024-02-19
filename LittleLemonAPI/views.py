@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAdminUser
+from rest_framework.permissions import AllowAny
 from .models import Category, Order as OrderModel, OrderItem, MenuItem, Cart,  User
 from .serializers import MenuItemSerializer, UserSerializer, CartSerializer, OrderSerializer, OrderItemSerializer
 from rest_framework.permissions import IsAuthenticated
@@ -273,6 +273,29 @@ class Order(APIView):
                 else:
                     # Return orders with order items for the current user
                     orders = OrderModel.objects.filter(user=user)
+                
+                # category_name = request.query_params.get("category")
+                # to_price = request.query_params.get("price")
+                # search =  request.query_params.get("search")
+                # ordering =  request.query_params.get("ordering")
+                
+                perpage =  request.query_params.get("perpage", default=2) 
+                page =  request.query_params.get("page", default =1)
+                
+                # if category_name:
+                #    orders= orders.filter(category__title= category_name)
+                # if to_price:
+                #    orders= orders.filter(price__lte= to_price)
+                # if search:
+                #    orders= orders.filter(title__contains= search)
+                # if ordering:
+                #     ordering_fields = ordering.split(",")
+                #     orders= orders.order_by(*ordering_fields)
+                paginator = Paginator(orders, per_page=perpage)
+                try:
+                    orders = paginator.page(number=page)
+                except EmptyPage:
+                    orders = []
 
                 # Serialize the queryset and return the response
                 serialized_orders = OrderSerializer(orders, many=True)
@@ -372,8 +395,6 @@ class Order(APIView):
     #     except OrderModel.DoesNotExist:
     #         return Response({"message": "Order not found"}, status=status.HTTP_404_NOT_FOUND)
                 
-                
-            
         # except Exception as e:
         #     print("something went wrong",e)
 
@@ -449,7 +470,7 @@ class Order(APIView):
 # enabling it allows browsable api to remove token based auth meant for dev testing (temporary)
 @authentication_classes([SessionAuthentication])
 # SessionAuthentication must be enable in settings
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def endpoints(request):
     return Response(
         {"Menu-items":
@@ -459,7 +480,7 @@ def endpoints(request):
              "Manager": "GET, POST, PUT, PATCH, DELETE"
          }}, "Cart": {"endpoints": ["/api/cart/menu-items"], "methods": {"Customer": "GET, POST, DELETE"}},
             "Order": {"endpoints": ["/api/orders", r"/api/orders/{orderId}"], "methods": {
-                "Customer": "GET, POST, PUT, PATCH",  "Manager": "GET, DELETE", "Delivery crew": "GET, PATCH"
+                "Customer": "GET, POST",  "Manager": "GET, DELETE, PUT, PATCH", "Delivery crew": "GET, PATCH"
             }}, "role": ["Customer", "delivery crew", "Manager"], "User registration": {
              "methods": "GET POST", "role": "valid creditiontials", "endpoints": [
                 "/api/users", "/token/login/", "/api/users/me/"

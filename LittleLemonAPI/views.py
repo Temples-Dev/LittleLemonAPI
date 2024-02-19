@@ -12,11 +12,14 @@ from django.contrib.auth.models import Group
 from django.db import transaction
 from datetime import datetime
 from rest_framework.exceptions import PermissionDenied, NotFound
+from django.core.paginator import Paginator, EmptyPage
+from rest_framework.throttling import UserRateThrottle, AnonRateThrottle
 # Create your views here.
 
 
 class MenuItems(APIView):
-    # permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [AnonRateThrottle, UserRateThrottle]
 
     def get(self, request, menuItem=None):
         try:
@@ -28,10 +31,26 @@ class MenuItems(APIView):
                 menu_items = MenuItem.objects.all()
                 category_name = request.query_params.get("category")
                 to_price = request.query_params.get("price")
+                search =  request.query_params.get("search")
+                ordering =  request.query_params.get("ordering")
+                
+                perpage =  request.query_params.get("perpage", default=2) 
+                page =  request.query_params.get("page", default =1)
+                
                 if category_name:
                    menu_items= menu_items.filter(category__title= category_name)
                 if to_price:
                    menu_items= menu_items.filter(price__lte= to_price)
+                if search:
+                   menu_items= menu_items.filter(title__contains= search)
+                if ordering:
+                    ordering_fields = ordering.split(",")
+                    menu_items= menu_items.order_by(*ordering_fields)
+                paginator = Paginator(menu_items, per_page=perpage)
+                try:
+                    menu_items = paginator.page(number=page)
+                except EmptyPage:
+                    menu_items = []
                 serialized_items = MenuItemSerializer(menu_items, many=True)
                 return Response(serialized_items.data, status=status.HTTP_200_OK)
         except:
@@ -97,7 +116,7 @@ class MenuItems(APIView):
 
 
 class UserGroupManager(APIView):
-
+    permission_classes= [IsAuthenticated]
     def get(self, request, userId=None):
 
         try:
@@ -188,6 +207,7 @@ class UserGroupManager(APIView):
 
 
 class CartItems(APIView):
+    permission_classes = [IsAuthenticated]
     def get(self, request):
         try:
             cart_items = Cart.objects.filter(user=request.user)
@@ -229,6 +249,8 @@ class CartItems(APIView):
 
 
 class Order(APIView):
+    throttle_classes = [AnonRateThrottle, UserRateThrottle]
+    permission_classes=[IsAuthenticated]
 
     def get(self, request, orderId=None):
         try:
@@ -352,8 +374,8 @@ class Order(APIView):
                 
                 
             
-        except Exception as e:
-            print("something went wrong",e)
+        # except Exception as e:
+        #     print("something went wrong",e)
 
     def patch(self, request, orderId=None):
         try:
